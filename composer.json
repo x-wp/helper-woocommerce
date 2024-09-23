@@ -1,0 +1,31 @@
+{
+  "name": "x-wp/helper-woocommerce",
+  "description": "Utilities and helpers for WooCommerce",
+  "license": "GPL-2.0-only",
+  "type": "library",
+  "keywords": [
+    "abstractions",
+    "decoupling",
+    "interoperability",
+    "woocommerce",
+    "extended-wp"
+  ],
+  "authors": [
+    {
+      "name": "Sibin Grasic",
+      "email": "sibin.grasic@oblak.studio"
+    }
+  ],
+  "require": {
+    "php": ">=8.0"
+  },
+  "suggest": {
+    "automattic/jetpack-autoloader": "Allow for better interoperability with other plugins that use this package."
+  },
+  "prefer-stable": true,
+  "autoload": {
+    "psr-4": {
+      "XWC\\": "./"
+    }
+  }
+}

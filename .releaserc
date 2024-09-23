@@ -1,0 +1,27 @@
+{
+  "branches": [
+    "master"
+  ],
+  "plugins": [
+    "@semantic-release/commit-analyzer",
+    "@semantic-release/release-notes-generator",
+    [
+      "@semantic-release/exec",
+      {
+        "prepareCmd": "zip -r '/tmp/release.zip' Admin Traits composer.json README.md"
+      }
+    ],
+    [
+      "@semantic-release/github",
+      {
+        "assets": [
+          {
+            "path": "/tmp/release.zip",
+            "name": "xwc-utils-${nextRelease.version}.zip",
+            "label": "xWC Utilities v${nextRelease.version}"
+          }
+        ]
+      }
+    ]
+  ]
+}
