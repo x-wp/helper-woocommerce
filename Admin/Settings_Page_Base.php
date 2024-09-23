@@ -55,7 +55,7 @@ abstract class Settings_Page_Base extends \WC_Settings_Page {
      *   enabled: bool,
      *   priority: int,
      *   section_name: string,
-     *   fielfs: array<int, array<string, mixed>>,
+     *   fields: array<int, array<string, mixed>>,
      * }>
      */
     abstract protected function get_settings_array(): array;

@@ -17,23 +17,6 @@ trait Settings_API_Methods {
     protected array $settings;
 
     /**
-     * Get the settings value
-     *
-     * @param  string $name Settings group name.
-     */
-    public function __get( string $name ) {
-        return match ( $name ) {
-            'settings',
-            'opts',
-            'options',
-            'config', => $this->settings,
-            default => \is_callable( array( $this, $name ) )
-                ? $this->$name()
-                : null,
-        };
-    }
-
-    /**
      * Get the settings array from the database
      *
      * @param  string $option_key    The settings prefix.
