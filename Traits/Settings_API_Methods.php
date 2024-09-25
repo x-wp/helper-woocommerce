@@ -141,6 +141,10 @@ trait Settings_API_Methods {
             $grouped           = &$grouped[ $sub ];
         }
 
+        if ( ! \is_array( $options ) ) {
+            return;
+        }
+
         foreach ( $options as $key => $values ) {
             $grouped[ $key ] = $values;
         }
