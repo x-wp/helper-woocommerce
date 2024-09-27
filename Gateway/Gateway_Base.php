@@ -5,7 +5,7 @@
  * @package Serbian Addons for WooCommerce
  */
 
-namespace WWW\Gateway;
+namespace XWC\Gateway;
 
 use Automattic\Jetpack\Constants;
 
