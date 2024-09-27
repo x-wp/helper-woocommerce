@@ -17,7 +17,8 @@
     }
   ],
   "require": {
-    "php": ">=8.0"
+    "php": ">=8.0",
+    "x-wp/helper-functions": "^1.13"
   },
   "suggest": {
     "automattic/jetpack-autoloader": "Allow for better interoperability with other plugins that use this package."

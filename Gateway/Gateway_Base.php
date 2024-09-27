@@ -5,7 +5,7 @@
  * @package Serbian Addons for WooCommerce
  */
 
-namespace XWC\Gateway;
+namespace WWW\Gateway;
 
 use Automattic\Jetpack\Constants;
 
@@ -16,23 +16,16 @@ abstract class Gateway_Base extends \WC_Payment_Gateway {
     /**
 	 * Whether or not logging is enabled
 	 *
-	 * @var string[]
+	 * @var array<string, bool>
 	 */
-	public static array $log_enabled = array();
+	private static array $can_log = array();
 
 	/**
 	 * Logger instance
 	 *
 	 * @var \WC_Logger|null
 	 */
-	public static \WC_Logger_Interface|null $logger = null;
-
-    /**
-     * Log ID
-     *
-     * @var string|null
-     */
-    public static ?string $log_id = null;
+	private static $logger = null;
 
     /**
      * Constructor for the gateway.
@@ -41,35 +34,24 @@ abstract class Gateway_Base extends \WC_Payment_Gateway {
         $this->init_base_props();
         $this->init_form_fields();
         $this->init_settings();
-        $this->load_settings();
 
-        \add_action(
-            'woocommerce_update_options_payment_gateways_' . $this->id,
-            array( $this, 'process_admin_options' ),
-        );
+        // phpcs:ignore SlevomatCodingStandard.Functions.RequireMultiLineCall
+        \add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
+        \add_action( 'wc_payment_gateways_initialized', array( $this, 'init_gateway' ), 100, 0 );
     }
 
     /**
-     * Initializes base props needed for gateway functioning.
+     * Magic getter for our object.
+     *
+     * @param string $name Property to get.
+     * @return mixed
      */
-    final protected function init_base_props() {
-        $props = $this->get_base_props();
-        $props = \wp_parse_args(
-            $props,
-            array(
-                'has_fields'        => false,
-                'icon'              => \apply_filters(
-                    "{$props['id']}_icon",
-                    '',
-                ), //phpcs:ignore WooCommerce.Commenting.HookComment
-                'order_button_text' => null,
-                'supports'          => array( 'products' ),
-            ),
-        );
+    public function __get( string $name ): mixed {
+        $value = $this->$name ?? $this->settings[ $name ] ?? null;
 
-        foreach ( $props as $key => $value ) {
-            $this->$key = $value;
-        }
+        return 'no' === $value || 'yes' === $value
+            ? \wc_string_to_bool( $value )
+            : $value;
     }
 
     /**
@@ -82,6 +64,33 @@ abstract class Gateway_Base extends \WC_Payment_Gateway {
     abstract protected function get_base_props(): array;
 
     /**
+     * Get raw form fields.
+     *
+     * @return array
+     */
+    abstract protected function get_raw_form_fields(): array;
+
+    /**
+     * Initializes base props needed for gateway functioning.
+     */
+    final protected function init_base_props() {
+        $props = $this->get_base_props();
+        $props = \wp_parse_args(
+            $props,
+            array(
+                'has_fields'        => false,
+                'icon'              => \apply_filters( "{$props['id']}_icon", '' ), // phpcs:ignore
+                'order_button_text' => null,
+                'supports'          => array( 'products' ),
+            ),
+        );
+
+        foreach ( $props as $key => $value ) {
+            $this->$key = $value;
+        }
+    }
+
+    /**
      * {@inheritDoc}
      */
     final public function init_form_fields() {
@@ -91,58 +100,46 @@ abstract class Gateway_Base extends \WC_Payment_Gateway {
     }
 
     /**
+     * Loads settings from the database.
+     */
+    public function init_settings() {
+        parent::init_settings();
+
+        $this->title       = $this->get_option( 'title' );
+        $this->description = $this->get_option( 'description' );
+        $this->settings    = \array_diff_key(
+            $this->settings,
+            \wp_list_filter( $this->form_fields, array( 'type' => 'title' ) ),
+        );
+
+        self::$can_log[ $this->id ] = $this->debug ?? false;
+    }
+
+    /**
+     * Initializes the gateway.
+     *
+     * Hooked to `wc_payment_gateways_initialized`.
+     */
+    public function init_gateway(): void {
+        // Noop.
+    }
+
+    /**
      * Processes callbacks in form fields.
      *
      * @return array
      */
     final protected function process_form_fields(): array {
-        return \array_map(
-            static fn( $s ) => \array_map( static fn( $f ) => \is_callable( $f ) ? $f() : $f, $s ),
-            $this->get_raw_form_fields(),
-        );
-    }
+        $fields = $this->get_raw_form_fields();
 
-    /**
-     * Get raw form fields.
-     *
-     * @return array
-     */
-    abstract protected function get_raw_form_fields(): array;
-
-    /**
-     * Loads settings from the database.
-     */
-    final protected function load_settings() {
-        foreach ( $this->get_available_settings() as $key => $default ) {
-            $value = $this->get_option( $key, $default );
-            $value = \in_array( $value, array( 'yes', 'no' ), true ) ? \wc_string_to_bool( $value ) : $value;
-
-            $this->$key = $value;
-        }
-        $this->enabled = \wc_bool_to_string( $this->enabled );
-
-        self::$log_enabled[ self::$log_id ] = false;
-    }
-
-    /**
-     * Get available settings.
-     *
-     * @return array
-     */
-    final protected function get_available_settings(): array {
-        $settings = \array_map(
-            static fn( $f ) => $f['default'] ?? null,
-            \array_filter( $this->form_fields, static fn( $f ) => 'title' !== $f['type'] ),
-        );
-
-        foreach ( $settings as $key => $default ) {
-            $value = $this->get_option( $key, $default );
-            $value = \in_array( $value, array( 'yes', 'no' ), true ) ? \wc_string_to_bool( $value ) : $value;
-
-            $settings[ $key ] = $value;
+        foreach ( $fields as &$field ) {
+            $field = \array_map(
+                static fn( $f ) => $f instanceof \Closure ? $f() : $f,
+                $field,
+            );
         }
 
-        return $settings;
+        return $fields;
     }
 
     /**
@@ -161,8 +158,7 @@ abstract class Gateway_Base extends \WC_Payment_Gateway {
         $is_available = $this->is_valid_for_use();
 
         if ( ! \is_wp_error( $is_available ) ) {
-            parent::admin_options();
-            return;
+            return parent::admin_options();
         }
 
         ?>
@@ -203,36 +199,30 @@ abstract class Gateway_Base extends \WC_Payment_Gateway {
 	}
 
     /**
-	 * Processes and saves options.
-	 * If there is an error thrown, will continue to save and validate fields, but will leave the erroring field out.
-	 *
-	 * @return bool was anything saved?
-	 */
-	public function process_admin_options() {
-		$saved = parent::process_admin_options();
-
-		// Maybe clear logs.
-		if ( 'yes' !== $this->get_option( 'debug', 'no' ) ) {
-            self::$logger ??= \wc_get_logger();
-            self::$logger->clear( self::$log_id );
-		}
-
-		return $saved;
-	}
-
-    /**
 	 * Logging method.
 	 *
 	 * @param string $message Log message.
 	 * @param string $level Optional. Default 'info'. Possible values:
 	 *                      emergency|alert|critical|error|warning|notice|info|debug.
+     *
+     * @return static
 	 */
-	final public static function log( $message, $level = 'info' ) {
-        if ( ! self::$log_enabled[ self::$log_id ] ) {
-            return;
+	final public function log( $message, $level = 'info' ): static {
+        if ( self::$can_log[ $this->id ] ) {
+            $this
+            ->logger()
+            ->log( $level, $message, array( 'source' => $this->id ) );
         }
-        self::$logger ??= \wc_get_logger();
 
-		self::$logger->log( $level, $message, array( 'source' => self::$log_id ) );
+		return $this;
 	}
+
+    /**
+     * Get logger instance.
+     *
+     * @return \WC_Logger
+     */
+    final public function logger(): \WC_Logger {
+        return self::$logger ??= \wc_get_logger();
+    }
 }
