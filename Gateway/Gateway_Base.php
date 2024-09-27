@@ -91,6 +91,18 @@ abstract class Gateway_Base extends \WC_Payment_Gateway {
     }
 
     /**
+     * Get gateway options.
+     *
+     * @return array
+     */
+    public function get_options(): array {
+        return \array_combine(
+            \array_keys( $this->settings ),
+            \array_map( fn( $v ) => $this->$v, \array_keys( $this->settings ) ),
+        );
+    }
+
+    /**
      * {@inheritDoc}
      */
     final public function init_form_fields() {
