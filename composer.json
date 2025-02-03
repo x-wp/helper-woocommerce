@@ -29,7 +29,8 @@
       "XWC\\": ""
     },
     "files": [
-      "xwc-helper-fns-api.php"
+      "xwc-helper-fns-api.php",
+      "xwc-helper-fns-core.php"
     ]
   }
 }
