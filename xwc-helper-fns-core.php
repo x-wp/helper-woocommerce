@@ -6,7 +6,6 @@
  * @subpackage Helpers
  */
 
-use Automattic\Jetpack\Constants;
 use Automattic\WooCommerce\Utilities\FeaturesUtil;
 
 /**
@@ -15,12 +14,15 @@ use Automattic\WooCommerce\Utilities\FeaturesUtil;
  * @param string $plugin The plugin name or constant.
  */
 function wc_hpos_enable( string $plugin ): void {
+    static $enabled;
+    $enabled ??= array();
+
     add_action(
         'before_woocommerce_init',
-        static function () use ( $plugin ) {
-            FeaturesUtil::declare_compatibility(
+        static function () use ( $plugin, &$enabled ) {
+            $enabled[ $plugin ] ??= FeaturesUtil::declare_compatibility(
                 'custom_order_tables',
-                Constants::get_constant( $plugin ) ?? $plugin,
+                $plugin,
                 true,
             );
         },
